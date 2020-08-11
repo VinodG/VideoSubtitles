@@ -7,8 +7,7 @@ Following steps need to be done before using "com.tk.apkdemo.videosubtitles.subt
 
 Ex: 
 
-customVideoView.setOnUpdateListener(new OnUpdateListener(){
-
+    customVideoView.setOnUpdateListener(new OnUpdateListener(){
             @Override
             public void onUpdate(Object object, String error) {
                 if(error==null)

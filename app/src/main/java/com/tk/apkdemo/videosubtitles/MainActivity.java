@@ -1,21 +1,24 @@
 package com.tk.apkdemo.videosubtitles;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.media.MediaFormat;
-import android.media.MediaPlayer;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.text.Html;
 import android.util.Log;
 import android.widget.CompoundButton;
-import android.widget.MediaController;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.mlkit.common.model.DownloadConditions;
+import com.google.mlkit.nl.translate.TranslateLanguage;
+import com.google.mlkit.nl.translate.Translation;
+import com.google.mlkit.nl.translate.Translator;
+import com.google.mlkit.nl.translate.TranslatorOptions;
 import com.tk.apkdemo.videosubtitles.subtitles.CustomVideoView;
 import com.tk.apkdemo.videosubtitles.subtitles.OnUpdateListener;
 
@@ -27,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvSubTitle;
     private CustomVideoView subtitleView;
     private Switch swSubtitles;
+    private Translator englishGermanTranslator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +40,8 @@ public class MainActivity extends AppCompatActivity {
         tvSubTitle = (TextView)findViewById(R.id.tvSubTitle);
         swSubtitles = (Switch)findViewById(R.id.swSubtitles);
         showVideo(externalStoragePath+"/video/");
+        createTranslator(TranslateLanguage.TAMIL);
+        downloadTranslatorModel();
     }
 
     private void showVideo(String path)
@@ -56,26 +62,87 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-        Uri uri = Uri.parse(path+"video.mp4");
+        Uri uri = Uri.parse(path+"kisses24.mp4");
+        Log.e(TAG, "video path "+path+"video.mp4" );
         subtitleView.setOnUpdateListener(new OnUpdateListener(){
             @Override
             public void onUpdate(Object object, String error) {
-                if(error==null)
-                {
-                    tvSubTitle.setText(((String)object) +"");
+                if(error==null) {
+//                    tvSubTitle.setText(((String)object) +"");
+                    translateText(tvSubTitle,(String)object);
                 }
                 else
                     Toast.makeText(MainActivity.this,error+"",Toast.LENGTH_LONG).show();
             }
         });
-        subtitleView.start(path+"video.srt",uri);
+        subtitleView.start(path+"kisses24.srt",uri);
+        Log.e(TAG, "subtitle path "+path+"video.srt" );
 
     }
-    public void toast(String str)
-    {
+
+    private void translateText(final TextView tvSubTitle, final  String str) {
+        englishGermanTranslator.translate(str)
+                .addOnSuccessListener(
+                        new OnSuccessListener<String>() {
+                            @Override
+                            public void onSuccess(@NonNull String translatedText) {
+                                // Translation successful.
+                                tvSubTitle.setText(translatedText);
+                                Log.e(TAG, "onSuccess: "+translatedText );
+                            }
+                        })
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                // Error.
+                                // ...
+                                tvSubTitle.setText(str);
+                                Log.e(TAG, "onFailure: "+str );
+                            }
+                        });
+
+    }
+
+    public void toast(String str)  {
         Toast.makeText(MainActivity.this,str+"",Toast.LENGTH_LONG).show();
     }
+    private void createTranslator(String translator) {
+        // Create an English-German translator:
+        TranslatorOptions options =
+                new TranslatorOptions.Builder()
+                        .setSourceLanguage(TranslateLanguage.ENGLISH)
+                        .setTargetLanguage(translator)
+                        .build();
+        englishGermanTranslator =  Translation.getClient(options);
 
+    }
+
+    private void downloadTranslatorModel() {
+        DownloadConditions conditions = new DownloadConditions.Builder()
+                .requireWifi()
+                .build();
+        englishGermanTranslator.downloadModelIfNeeded(conditions)
+                .addOnSuccessListener(
+                        new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void v) {
+                                // Model downloaded successfully. Okay to start translating.
+                                // (Set a flag, unhide the translation UI, etc.)
+                                toast("Model is downloaded");
+                            }
+                        })
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                // Model couldn’t be downloaded or other internal error.
+                                // ...
+                                toast("error occured while Model is being downloaded : "+e.getMessage());
+                            }
+                        });
+
+    }
 
 }
 
